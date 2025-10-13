@@ -4,7 +4,7 @@
 using namespace std;
 
 //---------------------------------------------------------
-// Convierte un caracter a su representacion binaria de 8 bits
+// convierte un caracter a su representacion binaria de 8 bits
 //---------------------------------------------------------
 string aBinario(unsigned char c) {
     string bin = "";
