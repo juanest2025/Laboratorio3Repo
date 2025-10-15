@@ -3,9 +3,7 @@
 #include <string>
 using namespace std;
 
-// ======================================================
-// MÉTODO DE CODIFICACIÓN: Rotación de 3 bits
-// ======================================================
+// ----- Método de codificación: rotación de 3 bits -----
 unsigned char rotarDerecha(unsigned char valor, int n) {
     return (valor >> n) | (valor << (8 - n));
 }
@@ -13,13 +11,13 @@ unsigned char rotarIzquierda(unsigned char valor, int n) {
     return (valor << n) | (valor >> (8 - n));
 }
 
-// ======================================================
-// FUNCIONES DE ARCHIVOS
-// ======================================================
+// ----- Funciones para manejo de archivos -----
 string leerArchivo(string nombre) {
     ifstream archivo(nombre.c_str(), ios::binary);
     if (!archivo) throw string("No se pudo abrir el archivo ") + nombre;
-    string contenido((istreambuf_iterator<char>(archivo)), istreambuf_iterator<char>());
+    string contenido = "", linea;
+    while (getline(archivo, linea)) contenido += linea + "\n";
+    archivo.close();
     return contenido;
 }
 
@@ -30,9 +28,7 @@ void guardarArchivo(string nombre, string datos) {
     archivo.close();
 }
 
-// ======================================================
-// CODIFICAR / DECODIFICAR (solo método 1)
-// ======================================================
+// ----- Codificar / Decodificar -----
 string codificar(string texto) {
     string resultado = texto;
     for (int i = 0; i < texto.size(); i++)
@@ -47,17 +43,15 @@ string decodificar(string texto) {
     return resultado;
 }
 
-// ======================================================
-// FUNCIONES DE SISTEMA
-// ======================================================
-bool loginAdmin() {
-    string codificado = leerArchivo("sudo.txt");
+// ----- Funciones de sistema -----
+bool loginAdmin(string archivoSudo) {
+    string codificado = leerArchivo(archivoSudo);
     string decodificado = decodificar(codificado);
 
     int i = decodificado.find(',');
     string userFile = decodificado.substr(0, i);
     string passFile = decodificado.substr(i + 1);
-
+    cout << userFile << "," << passFile << endl;
     string user, pass;
     cout << "Usuario administrador: ";
     cin >> user;
@@ -67,8 +61,8 @@ bool loginAdmin() {
     return (user == userFile && pass == passFile);
 }
 
-bool loginUsuario(string cedula, string clave) {
-    string codificado = leerArchivo("usuarios.txt");
+bool loginUsuario(string archivoUsuarios, string cedula, string clave) {
+    string codificado = leerArchivo(archivoUsuarios);
     string decodificado = decodificar(codificado);
 
     int i = 0;
@@ -90,49 +84,55 @@ bool loginUsuario(string cedula, string clave) {
     return false;
 }
 
-void registrarUsuario() {
+void registrarUsuario(string archivoUsuarios) {
     try {
-        string codificado = leerArchivo("usuarios.txt");
+        string codificado = leerArchivo(archivoUsuarios);
         string decodificado = decodificar(codificado);
 
         string cedula, clave;
+        long saldo;
         cout << "Cedula nueva: ";
         cin >> cedula;
         cout << "Clave nueva: ";
         cin >> clave;
+        cout << "Saldo inicial (COP): ";
+        cin >> saldo;
 
-        string nuevo = cedula + "," + clave + ",0\n";
+        string nuevo = cedula + "," + clave + "," + to_string(saldo) + "\n";
         decodificado += nuevo;
 
-        guardarArchivo("usuarios.txt", codificar(decodificado));
-        cout << "Usuario registrado correctamente.\n";
+        guardarArchivo(archivoUsuarios, codificar(decodificado));
+        cout << "Usuario registrado correctamente con saldo inicial de " << saldo << " COP.\n";
     } catch (...) {
         string cedula, clave;
+        long saldo;
         cout << "Cedula nueva: ";
         cin >> cedula;
         cout << "Clave nueva: ";
         cin >> clave;
+        cout << "Saldo inicial (COP): ";
+        cin >> saldo;
 
-        string nuevo = cedula + "," + clave + ",0\n";
-        guardarArchivo("usuarios.txt", codificar(nuevo));
-        cout << "Archivo creado y usuario registrado.\n";
+        string nuevo = cedula + "," + clave + "," + to_string(saldo) + "\n";
+        guardarArchivo(archivoUsuarios, codificar(nuevo));
+        cout << "Archivo creado y usuario registrado con saldo inicial de " << saldo << " COP.\n";
     }
 }
 
-void registrarTransaccion(string tipo, string usuario) {
+void registrarTransaccion(string archivoTrans, string tipo, string usuario) {
     string registro = usuario + "," + tipo + "\n";
     try {
-        string cod = leerArchivo("transacciones.txt");
+        string cod = leerArchivo(archivoTrans);
         string dec = decodificar(cod);
         dec += registro;
-        guardarArchivo("transacciones.txt", codificar(dec));
+        guardarArchivo(archivoTrans, codificar(dec));
     } catch (...) {
-        guardarArchivo("transacciones.txt", codificar(registro));
+        guardarArchivo(archivoTrans, codificar(registro));
     }
 }
 
-void menuUsuario(string cedula) {
-    string codificado = leerArchivo("usuarios.txt");
+void menuUsuario(string archivoUsuarios, string archivoTrans, string cedula) {
+    string codificado = leerArchivo(archivoUsuarios);
     string decodificado = decodificar(codificado);
 
     string nuevo = "";
@@ -159,16 +159,16 @@ void menuUsuario(string cedula) {
 
             if (op == 1) {
                 saldo -= 1000;
-                cout << "Saldo actual: " << saldo << endl;
-                registrarTransaccion("Consulta", ced);
+                cout << "Saldo actual: " << saldo << " COP\n";
+                registrarTransaccion(archivoTrans, "Consulta", ced);
             } else if (op == 2) {
                 long monto;
                 cout << "Monto a retirar: ";
                 cin >> monto;
                 if (monto + 1000 <= saldo) {
                     saldo -= monto + 1000;
-                    cout << "Retiro exitoso. Nuevo saldo: " << saldo << endl;
-                    registrarTransaccion("Retiro", ced);
+                    cout << "Retiro exitoso. Nuevo saldo: " << saldo << " COP\n";
+                    registrarTransaccion(archivoTrans, "Retiro", ced);
                 } else {
                     cout << "Fondos insuficientes.\n";
                 }
@@ -177,25 +177,31 @@ void menuUsuario(string cedula) {
         }
         nuevo += linea + "\n";
     }
-    guardarArchivo("usuarios.txt", codificar(nuevo));
+    guardarArchivo(archivoUsuarios, codificar(nuevo));
 }
 
-// ======================================================
-// PROGRAMA PRINCIPAL
-// ======================================================
-int main() {
-    cout << "=== SISTEMA BANCARIO (Metodo: Rotacion de 3 bits) ===\n";
+// ----- Programa principal -----
+int main(int argc, char* argv[]) {
+    if (argc < 4) {
+        cout << "Uso: " << argv[0] << " <sudo.txt> <usuarios.txt> <transacciones.txt>\n";
+        return 1;
+    }
 
+    string archivoSudo = argv[1];
+    string archivoUsuarios = argv[2];
+    string archivoTrans = argv[3];
+
+    cout << "--- SISTEMA BANCARIO (metodo: rotacion de 3 bits) ---\n";
     int tipo;
     cout << "1. Admin\n2. Usuario\nOpcion: ";
     cin >> tipo;
 
     try {
         if (tipo == 1) {
-            if (loginAdmin()) {
+            if (loginAdmin(archivoSudo)) {
                 cout << "Acceso de administrador correcto.\n";
-                registrarUsuario();
-                registrarTransaccion("LoginAdmin", "admin");
+                registrarUsuario(archivoUsuarios);
+                registrarTransaccion(archivoTrans, "LoginAdmin", "admin");
             } else {
                 cout << "Credenciales incorrectas.\n";
             }
@@ -205,10 +211,10 @@ int main() {
             cin >> cedula;
             cout << "Clave: ";
             cin >> clave;
-            if (loginUsuario(cedula, clave)) {
+            if (loginUsuario(archivoUsuarios, cedula, clave)) {
                 cout << "Bienvenido usuario.\n";
-                registrarTransaccion("LoginUsuario", cedula);
-                menuUsuario(cedula);
+                registrarTransaccion(archivoTrans, "LoginUsuario", cedula);
+                menuUsuario(archivoUsuarios, archivoTrans, cedula);
             } else {
                 cout << "Datos incorrectos.\n";
             }
@@ -221,3 +227,5 @@ int main() {
 
     return 0;
 }
+
+
